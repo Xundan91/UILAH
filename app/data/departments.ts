@@ -1,0 +1,108 @@
+import { Department } from './types';
+
+export const departments: Department[] = [
+    // Core Academic Departments
+    {
+        id: 'english',
+        name: 'Department of English',
+        category: 'core',
+        description: 'Literature, Language, and Cultural Studies',
+        icon: '📖',
+        studentCount: 980,
+        facultyCount: 28,
+    },
+    {
+        id: 'psychology',
+        name: 'Department of Psychology',
+        category: 'core',
+        description: 'Clinical, Cognitive, Neuropsychology, and Forensic Psychology',
+        icon: '🧠',
+        studentCount: 850,
+        facultyCount: 24,
+    },
+    {
+        id: 'economics',
+        name: 'Department of Economics',
+        category: 'core',
+        description: 'Indian Economy, Society, and Research Methodology',
+        icon: '📊',
+        studentCount: 780,
+        facultyCount: 22,
+    },
+    {
+        id: 'political-science',
+        name: 'Department of Political Science',
+        category: 'core',
+        description: 'International Relations and Diplomacy',
+        icon: '⚖️',
+        studentCount: 720,
+        facultyCount: 20,
+    },
+    {
+        id: 'sociology',
+        name: 'Department of Sociology',
+        category: 'core',
+        description: 'Social Structures and Gender Studies',
+        icon: '🏛️',
+        studentCount: 650,
+        facultyCount: 18,
+    },
+    // Specialised Areas
+    {
+        id: 'language-studies',
+        name: 'Language Studies',
+        category: 'specialised',
+        description: 'Linguistics and Foreign Languages (French, German, Spanish)',
+        icon: '🌍',
+        studentCount: 480,
+        facultyCount: 14,
+    },
+    {
+        id: 'performing-arts',
+        name: 'Performing Arts',
+        category: 'specialised',
+        description: 'Theatre and Creative Expression',
+        icon: '🎭',
+        studentCount: 380,
+        facultyCount: 12,
+    },
+    {
+        id: 'fine-arts',
+        name: 'Fine Arts & Design',
+        category: 'specialised',
+        description: 'Visual Arts, Culture, and Media Studies',
+        icon: '🎨',
+        studentCount: 420,
+        facultyCount: 12,
+    },
+    {
+        id: 'humanities',
+        name: 'Humanities',
+        category: 'specialised',
+        description: 'History, Geography, and Philosophy',
+        icon: '📜',
+        studentCount: 385,
+        facultyCount: 12,
+    },
+    {
+        id: 'film-media',
+        name: 'Film & Media',
+        category: 'specialised',
+        description: 'Film Studies, Theory, and Digital Media Writing',
+        icon: '🎬',
+        studentCount: 280,
+        facultyCount: 10,
+    },
+    {
+        id: 'emerging-tech',
+        name: 'Emerging Technologies',
+        category: 'specialised',
+        description: 'Artificial Intelligence (AI) for Social Sciences',
+        icon: '🤖',
+        studentCount: 250,
+        facultyCount: 8,
+    },
+];
+
+export const getDepartmentById = (id: string) =>
+    departments.find((d) => d.id === id);
