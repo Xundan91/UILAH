@@ -10,6 +10,7 @@ import {
     type ReactNode,
 } from "react";
 import type { Student } from "../data/types";
+import type { MultiImportCreatedStudent, StudentMultiImportRow } from "../lib/studentExcel";
 
 type StudentsContextValue = {
     students: Student[];
@@ -20,7 +21,16 @@ type StudentsContextValue = {
     updateStudent: (id: string, patch: Partial<Student>) => Promise<void>;
     replaceStudent: (s: Student) => Promise<void>;
     removeStudent: (id: string) => Promise<void>;
-    importStudents: (instituteId: string, programCode: string, rows: Omit<Student, "id">[]) => Promise<void>;
+    importStudents: (
+        instituteId: string,
+        programCode: string,
+        rows: Omit<Student, "id">[]
+    ) => Promise<{ created: number; errors: string[] }>;
+    importStudentsMulti: (rows: StudentMultiImportRow[]) => Promise<{
+        created: number;
+        errors: string[];
+        imported: MultiImportCreatedStudent[];
+    }>;
     resetToSeed: () => void;
 };
 
@@ -147,8 +157,41 @@ export function StudentsDataProvider({ children }: { children: ReactNode }) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ instituteId, programCode, rows }),
             });
-            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Import failed");
+            const data = (await res.json().catch(() => ({}))) as {
+                created?: number;
+                errors?: string[];
+                error?: string;
+            };
+            if (!res.ok) throw new Error(data.error ?? "Import failed");
             await refresh();
+            return {
+                created: data.created ?? 0,
+                errors: Array.isArray(data.errors) ? data.errors : [],
+            };
+        },
+        [refresh]
+    );
+
+    const importStudentsMulti = useCallback(
+        async (rows: StudentMultiImportRow[]) => {
+            const res = await fetch("/api/students/import/multi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rows }),
+            });
+            const data = (await res.json().catch(() => ({}))) as {
+                created?: number;
+                errors?: string[];
+                imported?: MultiImportCreatedStudent[];
+                error?: string;
+            };
+            if (!res.ok) throw new Error(data.error ?? "Import failed");
+            await refresh();
+            return {
+                created: data.created ?? 0,
+                errors: Array.isArray(data.errors) ? data.errors : [],
+                imported: Array.isArray(data.imported) ? data.imported : [],
+            };
         },
         [refresh]
     );
@@ -168,6 +211,7 @@ export function StudentsDataProvider({ children }: { children: ReactNode }) {
             replaceStudent,
             removeStudent,
             importStudents,
+            importStudentsMulti,
             resetToSeed,
         }),
         [
@@ -180,6 +224,7 @@ export function StudentsDataProvider({ children }: { children: ReactNode }) {
             replaceStudent,
             removeStudent,
             importStudents,
+            importStudentsMulti,
             resetToSeed,
         ]
     );

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         const rows = await prisma.student.findMany({
             where,
             include: { program: true },
-            orderBy: { id: "asc" },
+            orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         });
         return NextResponse.json({ students: rows.map(prismaStudentToDto) });
     } catch (e) {

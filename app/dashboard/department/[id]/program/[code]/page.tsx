@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Filter, X, Mail, Phone, Activity, UserPlus, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Filter, X, Mail, Phone, Activity, UserPlus, FileSpreadsheet, Pencil, Trash2, Loader2 } from "lucide-react";
 import { getProgramByDeptAndSlug } from "../../../../../data/departments";
-import { filterStudentsByProgram } from "../../../../../data/students";
 import { useStudents } from "../../../../../context/StudentsDataContext";
 import { useDashboardRole } from "../../../../../context/DashboardRoleContext";
 import { parseStudentExcel } from "../../../../../lib/studentExcel";
@@ -33,10 +32,33 @@ export default function ProgramStudentsPage() {
         ? `${resolved.program.name} [${resolved.program.code}]`
         : "";
 
-    const allInProgram = useMemo(() => {
-        if (!resolved) return [];
-        return filterStudentsByProgram(students, deptId, resolved.program.code);
-    }, [students, deptId, resolved]);
+    /** Server-filtered list so this page only shows students for this institute + program (Prisma query). */
+    const [programStudents, setProgramStudents] = useState<Student[]>([]);
+    const [programListLoading, setProgramListLoading] = useState(false);
+
+    const loadProgramStudents = useCallback(async () => {
+        if (!resolved) {
+            setProgramStudents([]);
+            return;
+        }
+        setProgramListLoading(true);
+        try {
+            const q = new URLSearchParams({
+                instituteId: resolved.dept.id,
+                programCode: resolved.program.code,
+            });
+            const res = await fetch(`/api/students?${q}`, { cache: "no-store" });
+            if (!res.ok) return;
+            const data = (await res.json()) as { students?: Student[] };
+            setProgramStudents(Array.isArray(data.students) ? data.students : []);
+        } finally {
+            setProgramListLoading(false);
+        }
+    }, [resolved]);
+
+    useEffect(() => {
+        void loadProgramStudents();
+    }, [loadProgramStudents, students]);
 
     const [yearFilter, setYearFilter] = useState("all");
     const [cgpaFilter, setCgpaFilter] = useState("all");
@@ -48,11 +70,15 @@ export default function ProgramStudentsPage() {
     const [formOpen, setFormOpen] = useState(false);
     const [formMode, setFormMode] = useState<"add" | "edit">("add");
     const [formStudent, setFormStudent] = useState<Student | null>(null);
-    const [excelMessage, setExcelMessage] = useState<string | null>(null);
+    const [excelFeedback, setExcelFeedback] = useState<{
+        tone: "success" | "warning" | "error";
+        message: string;
+    } | null>(null);
+    const [excelBusy, setExcelBusy] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const filteredStudents = useMemo(() => {
-        return allInProgram.filter((s) => {
+        return programStudents.filter((s) => {
             if (yearFilter !== "all" && s.enrollmentYear !== parseInt(yearFilter, 10)) return false;
             if (semesterFilter !== "all" && s.semester !== parseInt(semesterFilter, 10)) return false;
             if (cgpaFilter === "<6" && s.cgpa >= 6) return false;
@@ -64,9 +90,9 @@ export default function ProgramStudentsPage() {
             if (searchQuery && !s.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             return true;
         });
-    }, [allInProgram, yearFilter, cgpaFilter, semesterFilter, genderFilter, searchQuery]);
+    }, [programStudents, yearFilter, cgpaFilter, semesterFilter, genderFilter, searchQuery]);
 
-    const modalStudent = activeModal ? allInProgram.find((s) => s.id === activeModal) : null;
+    const modalStudent = activeModal ? programStudents.find((s) => s.id === activeModal) : null;
 
     const cgpaChartData = useMemo(() => {
         const ranges = ["<6", "6-7", "7-8", "8-9", "9+"];
@@ -125,23 +151,65 @@ export default function ProgramStudentsPage() {
         const file = e.target.files?.[0];
         e.target.value = "";
         if (!file || !resolved) return;
-        setExcelMessage(null);
+        setExcelFeedback(null);
+        setExcelBusy(true);
         try {
-            const { students: rows, errors } = await parseStudentExcel(
+            const { students: rows, errors: parseErrors } = await parseStudentExcel(
                 file,
                 deptId,
                 resolved.program.code,
                 programDisplay
             );
             if (rows.length === 0) {
-                setExcelMessage(errors.length ? errors.join(" ") : "No rows imported.");
+                setExcelFeedback({
+                    tone: "error",
+                    message: parseErrors.length
+                        ? "No student data was saved to the database table Student. " + parseErrors.join(" ")
+                        : "No valid rows in the file. Nothing was added to the database table Student.",
+                });
                 return;
             }
-            await importStudents(deptId, resolved.program.code, rows);
-            const msg = `Imported ${rows.length} student(s).${errors.length ? ` Skipped: ${errors.join(" ")}` : ""}`;
-            setExcelMessage(msg);
+            const { created, errors: apiErrors } = await importStudents(deptId, resolved.program.code, rows);
+            const saved =
+                created === 1
+                    ? "1 student record was saved to the database table Student."
+                    : `${created} student records were saved to the database table Student.`;
+            if (created === 0) {
+                setExcelFeedback({
+                    tone: "error",
+                    message:
+                        "No student data was saved to the database table Student. " +
+                        (apiErrors.length ? apiErrors.join(" · ") : ""),
+                });
+                return;
+            }
+            let message = `Successfully added student data. ${saved}`;
+            if (rows.length > 1) {
+                message += ` Your file had ${rows.length} valid row(s) for this program.`;
+            }
+            if (parseErrors.length) {
+                message +=
+                    ` ${parseErrors.length} other row(s) in the file were skipped: ` +
+                    parseErrors.slice(0, 5).join(" · ") +
+                    (parseErrors.length > 5 ? " …" : "");
+            }
+            if (apiErrors.length) {
+                message +=
+                    ` Some rows could not be saved: ` +
+                    apiErrors.slice(0, 5).join(" · ") +
+                    (apiErrors.length > 5 ? " …" : "");
+            }
+            setExcelFeedback({
+                tone: parseErrors.length || apiErrors.length ? "warning" : "success",
+                message,
+            });
         } catch (err) {
-            setExcelMessage(err instanceof Error ? err.message : "Could not read Excel file.");
+            setExcelFeedback({
+                tone: "error",
+                message: err instanceof Error ? err.message : "Could not read Excel file.",
+            });
+        } finally {
+            setExcelBusy(false);
         }
     };
 
@@ -218,9 +286,14 @@ export default function ProgramStudentsPage() {
                             className="btn btn-secondary btn-sm"
                             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                             onClick={() => fileInputRef.current?.click()}
+                            disabled={excelBusy}
                         >
-                            <FileSpreadsheet size={16} />
-                            Add from Excel
+                            {excelBusy ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                                <FileSpreadsheet size={16} />
+                            )}
+                            {excelBusy ? "Reading file…" : "Add from Excel"}
                         </button>
                         <input
                             ref={fileInputRef}
@@ -232,18 +305,29 @@ export default function ProgramStudentsPage() {
                     </>
                 )}
             </div>
-            {excelMessage && (
+            {excelFeedback && (
                 <div
                     className="card-static"
                     style={{
                         padding: 12,
                         marginBottom: 16,
                         fontSize: 13,
-                        color: "var(--text-secondary)",
-                        background: "rgba(139,157,131,0.1)",
+                        color: "var(--text-primary)",
+                        borderLeft:
+                            excelFeedback.tone === "success"
+                                ? "3px solid var(--accent-sage)"
+                                : excelFeedback.tone === "warning"
+                                  ? "3px solid var(--accent-terracotta)"
+                                  : "3px solid #c45c6a",
+                        background:
+                            excelFeedback.tone === "success"
+                                ? "rgba(139,157,131,0.12)"
+                                : excelFeedback.tone === "warning"
+                                  ? "rgba(194,117,72,0.08)"
+                                  : "rgba(196,122,138,0.08)",
                     }}
                 >
-                    {excelMessage}
+                    {excelFeedback.message}
                 </div>
             )}
 
@@ -347,6 +431,9 @@ export default function ProgramStudentsPage() {
                         <option value="Other">Other</option>
                     </select>
                 </div>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "10px 0 0" }}>
+                    Newly added and imported students appear at the top of this list. Use search by name if you do not see someone (older rows are below).
+                </p>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
@@ -401,7 +488,22 @@ export default function ProgramStudentsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredStudents.map((student) => (
+                            {programListLoading ? (
+                                <tr>
+                                    <td
+                                        colSpan={isAssistant ? 10 : 9}
+                                        style={{ textAlign: "center", padding: 48, color: "var(--text-muted)" }}
+                                    >
+                                        <Loader2
+                                            size={28}
+                                            className="animate-spin"
+                                            style={{ color: "var(--accent-terracotta)", display: "inline-block" }}
+                                        />
+                                        <div style={{ marginTop: 14, fontSize: 14 }}>Loading students for this program…</div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredStudents.map((student) => (
                                 <tr key={student.id}>
                                     <td style={{ fontWeight: 500 }}>{student.name}</td>
                                     <td>
@@ -488,11 +590,14 @@ export default function ProgramStudentsPage() {
                                         </td>
                                     )}
                                 </tr>
-                            ))}
-                            {filteredStudents.length === 0 && (
+                                ))
+                            )}
+                            {!programListLoading && filteredStudents.length === 0 && (
                                 <tr>
                                     <td colSpan={isAssistant ? 10 : 9} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
-                                        No students match your filters
+                                        {programStudents.length === 0
+                                            ? "No students in this program yet."
+                                            : "No students match your filters"}
                                     </td>
                                 </tr>
                             )}
