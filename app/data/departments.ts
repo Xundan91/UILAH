@@ -1,108 +1,116 @@
 import { Department } from './types';
 
+/** Six university institutes and their degree programs (code as per curriculum). */
 export const departments: Department[] = [
-    // Core Academic Departments
     {
-        id: 'english',
-        name: 'Department of English',
-        category: 'core',
-        description: 'Literature, Language, and Cultural Studies',
-        icon: '📖',
-        studentCount: 980,
-        facultyCount: 28,
-    },
-    {
-        id: 'psychology',
-        name: 'Department of Psychology',
-        category: 'core',
-        description: 'Clinical, Cognitive, Neuropsychology, and Forensic Psychology',
-        icon: '🧠',
-        studentCount: 850,
-        facultyCount: 24,
-    },
-    {
-        id: 'economics',
-        name: 'Department of Economics',
-        category: 'core',
-        description: 'Indian Economy, Society, and Research Methodology',
-        icon: '📊',
-        studentCount: 780,
-        facultyCount: 22,
-    },
-    {
-        id: 'political-science',
-        name: 'Department of Political Science',
-        category: 'core',
-        description: 'International Relations and Diplomacy',
-        icon: '⚖️',
-        studentCount: 720,
-        facultyCount: 20,
-    },
-    {
-        id: 'sociology',
-        name: 'Department of Sociology',
-        category: 'core',
-        description: 'Social Structures and Gender Studies',
+        id: 'uia',
+        shortName: 'UIA',
+        name: 'University Institute of Architecture (UIA)',
+        description: 'Architecture — B.Arch and M.Arch programs.',
         icon: '🏛️',
-        studentCount: 650,
-        facultyCount: 18,
-    },
-    // Specialised Areas
-    {
-        id: 'language-studies',
-        name: 'Language Studies',
-        category: 'specialised',
-        description: 'Linguistics and Foreign Languages (French, German, Spanish)',
-        icon: '🌍',
-        studentCount: 480,
-        facultyCount: 14,
-    },
-    {
-        id: 'performing-arts',
-        name: 'Performing Arts',
-        category: 'specialised',
-        description: 'Theatre and Creative Expression',
-        icon: '🎭',
-        studentCount: 380,
-        facultyCount: 12,
-    },
-    {
-        id: 'fine-arts',
-        name: 'Fine Arts & Design',
-        category: 'specialised',
-        description: 'Visual Arts, Culture, and Media Studies',
-        icon: '🎨',
-        studentCount: 420,
-        facultyCount: 12,
-    },
-    {
-        id: 'humanities',
-        name: 'Humanities',
-        category: 'specialised',
-        description: 'History, Geography, and Philosophy',
-        icon: '📜',
-        studentCount: 385,
-        facultyCount: 12,
-    },
-    {
-        id: 'film-media',
-        name: 'Film & Media',
-        category: 'specialised',
-        description: 'Film Studies, Theory, and Digital Media Writing',
-        icon: '🎬',
-        studentCount: 280,
+        programs: [
+            { name: 'BArch', code: 'AR201' },
+            { name: 'M.Arch.', code: 'AR301' },
+        ],
+        studentCount: 457,
         facultyCount: 10,
     },
     {
-        id: 'emerging-tech',
-        name: 'Emerging Technologies',
-        category: 'specialised',
-        description: 'Artificial Intelligence (AI) for Social Sciences',
-        icon: '🤖',
-        studentCount: 250,
-        facultyCount: 8,
+        id: 'uid',
+        shortName: 'UID',
+        name: 'University Institute of Design (UID)',
+        description: 'Design — product, industrial, fashion, MFA, BFA.',
+        icon: '🎨',
+        programs: [
+            { name: 'Bachelor of Design (Product and Industrial Design)', code: 'BD205' },
+            { name: 'Bachelor of Design (Fashion)', code: 'BD203' },
+            { name: 'MFA', code: 'MR302' },
+            { name: 'BFA', code: 'BS204' },
+        ],
+        studentCount: 915,
+        facultyCount: 26,
+    },
+    {
+        id: 'uifva',
+        shortName: 'UIFVA',
+        name: 'University Institute of Film & Visual Arts (UIFVA)',
+        description: 'Film, animation, VFX, gaming, and digital film making.',
+        icon: '🎬',
+        programs: [
+            { name: 'B.Sc. (Hons./Hons. with Research) (Digital Film Making)', code: 'AN205' },
+            { name: 'M.Sc (A & MT)', code: 'AN301' },
+            { name: 'B.Sc. (Animation, VFX & Gaming) (ITP)', code: 'AN801' },
+            { name: 'B.Sc. (Animation, VFX & Gaming)', code: 'AN203' },
+        ],
+        studentCount: 915,
+        facultyCount: 26,
+    },
+    {
+        id: 'uilah',
+        shortName: 'UILAH',
+        name: 'University Institute of Liberal Arts & Humanities (UILAH)',
+        description: 'Liberal arts, psychology, social work, and related disciplines.',
+        icon: '📚',
+        programs: [
+            { name: 'B.A. Psy', code: 'BA203' },
+            { name: 'B.A. (Hons) Liberal Arts', code: 'LA202' },
+            { name: 'M.A. (Psychology)', code: 'MA303' },
+            { name: 'M.A. (Clinical Psychology)', code: 'HY302' },
+            { name: 'M.A. (Politics and International Relations)', code: 'MA306' },
+            { name: 'M.A. (English)', code: 'MA302' },
+            { name: 'B.A. (Hons./Hons. with Research) (Social Work)', code: 'BA202' },
+            { name: 'B.A. (Hons) Liberal Arts - ITP', code: 'LA801' },
+            { name: 'B.A. Psychology (Hons.) - ITP', code: 'BA801' },
+        ],
+        studentCount: 2058,
+        facultyCount: 72,
+    },
+    {
+        id: 'uims',
+        shortName: 'UIMS',
+        name: 'University Institute of Media Studies (UIMS)',
+        description: 'Journalism, mass communication, and media.',
+        icon: '📰',
+        programs: [
+            { name: 'B.A. JMC', code: 'BJ201' },
+            { name: 'M.A. - JMC', code: 'MJ301' },
+            { name: 'B.A. JMC - ITP', code: 'BJ801' },
+        ],
+        studentCount: 686,
+        facultyCount: 18,
+    },
+    {
+        id: 'uittr',
+        shortName: 'UITTR',
+        name: 'University Institute of Teacher Training & Research (UITTR)',
+        description: 'Education, physical education, yoga, and integrated teacher programs.',
+        icon: '🎓',
+        programs: [
+            { name: 'P.G DIP(Yoga Education)', code: 'EY301' },
+            { name: 'B.P.Ed', code: 'BE201' },
+            { name: 'B.A.', code: 'BA301' },
+            { name: 'B.Sc. + B.Ed.', code: 'BS502' },
+            { name: 'B.A.+ B.Ed.', code: 'BA501' },
+        ],
+        studentCount: 1144,
+        facultyCount: 28,
     },
 ];
 
+export const totalProgramOfferings = departments.reduce((n, d) => n + d.programs.length, 0);
+
 export const getDepartmentById = (id: string) =>
     departments.find((d) => d.id === id);
+
+/** URL segment for program routes — lowercase code (e.g. ar201). */
+export function programCodeToSlug(code: string): string {
+    return code.toLowerCase();
+}
+
+export function getProgramByDeptAndSlug(deptId: string, codeSlug: string) {
+    const dept = getDepartmentById(deptId);
+    if (!dept) return null;
+    const program = dept.programs.find((p) => p.code.toLowerCase() === codeSlug.toLowerCase());
+    if (!program) return null;
+    return { dept, program };
+}

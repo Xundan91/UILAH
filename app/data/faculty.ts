@@ -1,6 +1,6 @@
 import { Faculty } from './types';
+import { departments } from './departments';
 
-// ────────── Seed helpers ──────────
 function seededRandom(seed: number): () => number {
     let s = seed;
     return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
@@ -12,7 +12,6 @@ function pickN<T>(arr: T[], min: number, max: number): T[] {
     return [...arr].sort(() => rand() - 0.5).slice(0, n);
 }
 
-// ────────── Name pools ──────────
 const maleNames = [
     'Dr. Anil Sharma', 'Dr. Rajesh Kumar', 'Dr. Vikram Singh', 'Dr. Suresh Mehta', 'Dr. Pradeep Saxena',
     'Dr. Sameer Khan', 'Dr. Manoj Tiwari', 'Dr. Ramesh Bhat', 'Dr. Sanjay Mishra', 'Dr. Arjun Nair',
@@ -91,19 +90,31 @@ const fdpActivities = [
     'International Exchange Program', 'Research Ethics Committee', 'E-learning Content Development',
 ];
 
-// Department configs
-const deptConfig: Record<string, { target: number; specializations: string[]; courses: string[] }> = {
-    'english': { target: 28, specializations: ['Postcolonial Literature', 'Cultural Studies', 'Creative Writing', 'American Literature', 'British Literature', 'World Literature', 'Linguistics', 'Modern Poetry'], courses: ['British Literature', 'American Literature', 'Postcolonial Studies', 'Creative Writing', 'Linguistics Foundations', 'Cultural Studies', 'World Literature', 'Modern Poetry'] },
-    'psychology': { target: 24, specializations: ['Clinical Psychology', 'Neuropsychology', 'Cognitive Psychology', 'Forensic Psychology', 'Developmental Psychology', 'Social Psychology', 'Health Psychology', 'Positive Psychology'], courses: ['Clinical Psychology', 'Cognitive Psychology', 'Neuropsychology', 'Forensic Psychology', 'Developmental Psychology', 'Social Psychology', 'Abnormal Psychology', 'Health Psychology'] },
-    'economics': { target: 22, specializations: ['Indian Economy', 'Development Economics', 'Econometrics', 'International Trade', 'Public Finance', 'Macroeconomics', 'Microeconomics'], courses: ['Microeconomics', 'Macroeconomics', 'Indian Economy', 'Research Methodology', 'Development Economics', 'Econometrics', 'International Trade', 'Public Finance'] },
-    'political-science': { target: 20, specializations: ['International Relations', 'Diplomacy', 'Public Policy', 'Indian Government', 'Comparative Politics', 'Political Theory'], courses: ['International Relations', 'Diplomacy', 'Comparative Politics', 'Political Theory', 'Public Policy', 'Indian Government', 'Constitutional Law'] },
-    'sociology': { target: 18, specializations: ['Social Structures', 'Gender Studies', 'Urban Sociology', 'Rural Sociology', 'Social Movements', 'Environmental Sociology'], courses: ['Social Structures', 'Gender Studies', 'Urban Sociology', 'Rural Sociology', 'Research Methods', 'Social Movements'] },
-    'language-studies': { target: 14, specializations: ['French Language', 'German Language', 'Spanish Language', 'Translation Studies', 'Linguistics', 'Comparative Literature'], courses: ['French I', 'German I', 'Spanish I', 'Linguistics', 'Translation Studies', 'Comparative Philology'] },
-    'performing-arts': { target: 12, specializations: ['Theatre Production', 'Indian Classical Dance', 'Western Music', 'Acting', 'Stage Design', 'Creative Expression'], courses: ['Theatre Production', 'Acting Techniques', 'Dance Forms', 'Music Theory', 'Creative Expression', 'Stage Design'] },
-    'fine-arts': { target: 12, specializations: ['Visual Arts', 'Art History', 'Digital Art', 'Sculpture', 'Photography', 'Graphic Design'], courses: ['Visual Arts', 'Sculpture', 'Digital Art', 'Art History', 'Media Studies', 'Design Thinking'] },
-    'humanities': { target: 12, specializations: ['Indian History', 'World History', 'Philosophy', 'Geography', 'Cultural Heritage', 'Ethics'], courses: ['World History', 'Indian History', 'Philosophy', 'Geography', 'Ethics', 'Cultural Heritage'] },
-    'film-media': { target: 10, specializations: ['Film Studies', 'Documentary Making', 'Screenwriting', 'Digital Media', 'Cinematography', 'Media Ethics'], courses: ['Film Studies', 'Screenwriting', 'Film Theory', 'Digital Media', 'Documentary Making', 'Media Ethics'] },
-    'emerging-tech': { target: 8, specializations: ['AI for Social Sciences', 'Computational Linguistics', 'Data Analytics', 'NLP', 'Digital Humanities', 'Machine Learning'], courses: ['AI for Social Sciences', 'Data Analytics', 'Digital Humanities', 'Machine Learning Basics', 'Tech Ethics', 'Computational Linguistics'] },
+const instituteSpecCourses: Record<string, { specializations: string[]; courses: string[] }> = {
+    uia: {
+        specializations: ['Sustainable Architecture', 'Urban Housing', 'Heritage Conservation', 'Landscape Design', 'Building Technology'],
+        courses: ['Architectural Design Studio', 'Building Materials', 'Structural Systems', 'History of Architecture'],
+    },
+    uid: {
+        specializations: ['Industrial Design', 'Fashion Design', 'Visual Communication', 'MFA Practice', 'BFA Studio'],
+        courses: ['Design Fundamentals', 'Product Design Studio', 'Fashion Illustration', 'Design Thinking'],
+    },
+    uifva: {
+        specializations: ['Animation', 'VFX', 'Game Design', 'Digital Cinema', 'Film Theory'],
+        courses: ['Digital Filmmaking', 'Animation Principles', 'VFX Compositing', '3D Modeling'],
+    },
+    uilah: {
+        specializations: ['Clinical Psychology', 'Liberal Arts', 'English Literature', 'International Relations', 'Social Work'],
+        courses: ['Psychology Core', 'Research Methods', 'Literary Theory', 'International Relations'],
+    },
+    uims: {
+        specializations: ['Broadcast Journalism', 'Digital Media', 'Public Relations', 'Media Law'],
+        courses: ['News Reporting', 'Media Ethics', 'Digital Media', 'Video Production'],
+    },
+    uittr: {
+        specializations: ['Education', 'Physical Education', 'Yoga Education', 'Teacher Training'],
+        courses: ['Educational Psychology', 'Pedagogy', 'Yoga Philosophy', 'Curriculum Design'],
+    },
 };
 
 function weightedPickRel(): string {
@@ -119,11 +130,13 @@ function weightedPickRel(): string {
 function generateFaculty(): Faculty[] {
     const allFaculty: Faculty[] = [];
     let id = 1;
-    const deptIds = Object.keys(deptConfig);
 
-    for (const deptId of deptIds) {
-        const config = deptConfig[deptId];
-        for (let i = 0; i < config.target; i++) {
+    for (const dept of departments) {
+        const deptId = dept.id;
+        const config = instituteSpecCourses[deptId];
+        if (!config) continue;
+
+        for (let i = 0; i < dept.facultyCount; i++) {
             const isFemale = rand() < 0.45;
             const name = isFemale ? pick(femaleNames) : pick(maleNames);
             const education = i === 0 ? 'PhD' as const : pick(educationLevels);
@@ -185,6 +198,16 @@ function generateFaculty(): Faculty[] {
 
 export const faculty = generateFaculty();
 
+/** Fresh copy for DB seeding. */
+export function getInitialFaculty(): Faculty[] {
+    return generateFaculty();
+}
+
+export function filterFacultyByDepartment(all: Faculty[], deptId: string): Faculty[] {
+    return all.filter((f) => f.department === deptId);
+}
+
+/** @deprecated use filterFacultyByDepartment(list, deptId) with data from API */
 export const getFacultyByDepartment = (deptId: string) =>
     faculty.filter((f) => f.department === deptId);
 

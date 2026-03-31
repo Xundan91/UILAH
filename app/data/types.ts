@@ -5,7 +5,11 @@ export interface Student {
   gender: 'Male' | 'Female' | 'Other';
   religion: string;
   department: string;
+  /** Curriculum code, e.g. AR201 */
+  programCode: string;
   program: string;
+  /** Current semester (1–8) */
+  semester: number;
   enrollmentYear: number;
   cgpa: number;
   eventsAttended: number;
@@ -23,12 +27,18 @@ export interface Activity {
   date: string;
 }
 
+export interface ProgramOffering {
+  name: string;
+  code: string;
+}
+
 export interface Department {
   id: string;
+  shortName: string;
   name: string;
-  category: 'core' | 'specialised';
   description: string;
   icon: string;
+  programs: ProgramOffering[];
   studentCount: number;
   facultyCount: number;
 }
@@ -56,6 +66,16 @@ export interface PublicationProfile {
   books: BookEntry[];
   patents: PatentEntry[];
   articles: ArticleEntry[];
+}
+
+export function emptyPublicationProfile(): PublicationProfile {
+  return {
+    scopusArticles: 0,
+    conferences: [],
+    books: [],
+    patents: [],
+    articles: [],
+  };
 }
 
 export interface ConferenceEntry {

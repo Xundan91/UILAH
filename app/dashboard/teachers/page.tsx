@@ -4,9 +4,14 @@ import { useState } from "react";
 import {
     GraduationCap, BookOpen, Award, FileText, Lightbulb,
     ChevronDown, ChevronUp, User, Globe, Briefcase,
+    Pencil, Trash2, X,
 } from "lucide-react";
 import { departments } from "../../data/departments";
-import { faculty, getFacultyByDepartment } from "../../data/faculty";
+import { filterFacultyByDepartment } from "../../data/faculty";
+import { useFacultyData } from "../../context/FacultyDataContext";
+import { useDashboardRole } from "../../context/DashboardRoleContext";
+import FacultyEntryForm from "../../components/FacultyEntryForm";
+import type { Faculty } from "../../data/types";
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, ArcElement,
@@ -17,10 +22,13 @@ import { Doughnut, Bar } from "react-chartjs-2";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 export default function TeachersPage() {
+    const { faculty, addFaculty, replaceFaculty, removeFaculty } = useFacultyData();
+    const { isAssistant } = useDashboardRole();
     const [selectedDept, setSelectedDept] = useState<string | null>(null);
     const [expandedFaculty, setExpandedFaculty] = useState<string | null>(null);
+    const [editFaculty, setEditFaculty] = useState<Faculty | null>(null);
 
-    const deptFaculty = selectedDept ? getFacultyByDepartment(selectedDept) : [];
+    const deptFaculty = selectedDept ? filterFacultyByDepartment(faculty, selectedDept) : [];
     const selectedDeptInfo = selectedDept ? departments.find((d) => d.id === selectedDept) : null;
 
     // Global stats
@@ -46,12 +54,33 @@ export default function TeachersPage() {
         }],
     };
 
+    const handleSaveFaculty = async (f: Faculty) => {
+        if (!f.id) {
+            const { id: _id, ...rest } = f;
+            await addFaculty(rest);
+        } else {
+            await replaceFaculty(f);
+        }
+        setEditFaculty(null);
+    };
+
+    const confirmDeleteFaculty = async (f: Faculty) => {
+        if (typeof window === "undefined") return;
+        if (!window.confirm(`Remove ${f.name} from faculty records?`)) return;
+        try {
+            await removeFaculty(f.id);
+            if (expandedFaculty === f.id) setExpandedFaculty(null);
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : "Could not delete.");
+        }
+    };
+
     const publicationData = {
-        labels: departments.map((d) => d.name.replace("Department of ", "").slice(0, 10)),
+        labels: departments.map((d) => d.shortName),
         datasets: [{
             label: "Scopus Articles",
-            data: departments.map((d) => {
-                const df = getFacultyByDepartment(d.id);
+                data: departments.map((d) => {
+                const df = filterFacultyByDepartment(faculty, d.id);
                 return df.reduce((a, f) => a + f.publications.scopusArticles, 0);
             }),
             backgroundColor: "rgba(155,142,196,0.7)",
@@ -120,7 +149,7 @@ export default function TeachersPage() {
                     </div>
                 </div>
                 <div className="chart-container">
-                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Publications by Department</h3>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Publications by Institute</h3>
                     <div style={{ height: 200 }}>
                         <Bar data={publicationData} options={{
                             responsive: true, maintainAspectRatio: false,
@@ -134,14 +163,14 @@ export default function TeachersPage() {
                 </div>
             </div>
 
-            {/* Course / Department Grid */}
-            <h2 className="heading-serif" style={{ fontSize: 20, marginBottom: 16 }}>Select Department</h2>
+            {/* Institute grid */}
+            <h2 className="heading-serif" style={{ fontSize: 20, marginBottom: 16 }}>Select Institute</h2>
             <div style={{
                 display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                 gap: 12, marginBottom: 28,
             }}>
                 {departments.map((dept) => {
-                    const df = getFacultyByDepartment(dept.id);
+                    const df = filterFacultyByDepartment(faculty, dept.id);
                     return (
                         <button
                             key={dept.id}
@@ -157,7 +186,8 @@ export default function TeachersPage() {
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                 <span style={{ fontSize: 22 }}>{dept.icon}</span>
                                 <div>
-                                    <div style={{ fontSize: 13, fontWeight: 600 }}>{dept.name.replace("Department of ", "")}</div>
+                                    <div style={{ fontSize: 13, fontWeight: 600 }}>{dept.shortName}</div>
+                                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400 }}>{dept.name}</div>
                                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{df.length} Faculty</div>
                                 </div>
                             </div>
@@ -172,43 +202,94 @@ export default function TeachersPage() {
                     <h2 className="heading-serif" style={{ fontSize: 20, marginBottom: 16 }}>
                         {selectedDeptInfo.icon} {selectedDeptInfo.name} — Faculty
                     </h2>
+
+                    {isAssistant && (
+                        <div
+                            className="card-static"
+                            style={{
+                                padding: 24,
+                                marginBottom: 24,
+                                border: "1px solid rgba(194, 117, 72, 0.25)",
+                                background: "linear-gradient(180deg, rgba(255,250,245,0.9) 0%, var(--card-bg) 100%)",
+                            }}
+                        >
+                            <h3 className="heading-serif" style={{ fontSize: 18, margin: "0 0 8px" }}>
+                                Add faculty member
+                            </h3>
+                            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
+                                New records are saved with <code>POST /api/faculty</code>. Use optional JSON for full publication profile.
+                            </p>
+                            <FacultyEntryForm
+                                mode="add"
+                                defaultDepartment={selectedDept}
+                                variant="inline"
+                                onSubmit={handleSaveFaculty}
+                            />
+                        </div>
+                    )}
+
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                         {deptFaculty.map((f) => {
                             const isExpanded = expandedFaculty === f.id;
                             return (
                                 <div key={f.id} className="card-static" style={{ overflow: "hidden" }}>
                                     {/* Faculty Header */}
-                                    <button
-                                        onClick={() => setExpandedFaculty(isExpanded ? null : f.id)}
-                                        style={{
-                                            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                                            padding: "20px 24px", cursor: "pointer", border: "none", background: "transparent",
-                                            textAlign: "left",
-                                        }}
-                                    >
-                                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                                            <div style={{
-                                                width: 48, height: 48, borderRadius: 14,
-                                                background: `linear-gradient(135deg, ${f.education === 'PhD' ? 'rgba(139,157,131,0.2)' : f.education === 'Pursuing PhD' ? 'rgba(212,168,83,0.2)' : 'rgba(196,122,138,0.2)'}, transparent)`,
-                                                display: "flex", alignItems: "center", justifyContent: "center",
-                                                fontSize: 18, fontWeight: 700, color: "var(--accent-terracotta)",
-                                            }}>
-                                                {f.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{f.name}</div>
-                                                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{f.designation}</div>
-                                                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                                                    <span className={`badge ${f.education === 'PhD' ? 'badge-sage' : f.education === 'Pursuing PhD' ? 'badge-gold' : 'badge-rose'}`}>
-                                                        {f.education}
-                                                    </span>
-                                                    <span className="badge badge-sky">{f.gender}</span>
-                                                    <span className="badge badge-lavender">Age: {f.age}</span>
+                                    <div style={{ display: "flex", alignItems: "stretch" }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpandedFaculty(isExpanded ? null : f.id)}
+                                            style={{
+                                                flex: 1,
+                                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                                padding: "20px 24px", cursor: "pointer", border: "none", background: "transparent",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                                                <div style={{
+                                                    width: 48, height: 48, borderRadius: 14,
+                                                    background: `linear-gradient(135deg, ${f.education === 'PhD' ? 'rgba(139,157,131,0.2)' : f.education === 'Pursuing PhD' ? 'rgba(212,168,83,0.2)' : 'rgba(196,122,138,0.2)'}, transparent)`,
+                                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                                    fontSize: 18, fontWeight: 700, color: "var(--accent-terracotta)",
+                                                }}>
+                                                    {f.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{f.name}</div>
+                                                    <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{f.designation}</div>
+                                                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                                        <span className={`badge ${f.education === 'PhD' ? 'badge-sage' : f.education === 'Pursuing PhD' ? 'badge-gold' : 'badge-rose'}`}>
+                                                            {f.education}
+                                                        </span>
+                                                        <span className="badge badge-sky">{f.gender}</span>
+                                                        <span className="badge badge-lavender">Age: {f.age}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                    </button>
+                                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                        </button>
+                                        {isAssistant && (
+                                            <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 16 }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    title="Edit"
+                                                    onClick={() => setEditFaculty(f)}
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    title="Delete"
+                                                    style={{ color: "var(--accent-rose)" }}
+                                                    onClick={() => void confirmDeleteFaculty(f)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {/* Expanded Detail */}
                                     {isExpanded && (
@@ -367,9 +448,32 @@ export default function TeachersPage() {
                         })}
                         {deptFaculty.length === 0 && (
                             <div className="card-static" style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
-                                No faculty data available for this department
+                                No faculty data available for this institute
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {editFaculty && (
+                <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setEditFaculty(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <h3 className="heading-serif" style={{ fontSize: 20, margin: 0 }}>
+                                Edit faculty
+                            </h3>
+                            <button type="button" className="btn btn-ghost" style={{ padding: 6 }} onClick={() => setEditFaculty(null)} aria-label="Close">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <FacultyEntryForm
+                            mode="edit"
+                            initial={editFaculty}
+                            defaultDepartment={editFaculty.department}
+                            variant="modal"
+                            onCancel={() => setEditFaculty(null)}
+                            onSubmit={handleSaveFaculty}
+                        />
                     </div>
                 </div>
             )}

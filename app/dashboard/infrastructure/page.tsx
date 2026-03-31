@@ -3,9 +3,13 @@
 import { useMemo, useState } from "react";
 import {
     Building2, Monitor, BookOpen, DoorOpen, Layers,
-    Cpu, TrendingUp,
+    Cpu, TrendingUp, Pencil, Trash2, X,
 } from "lucide-react";
-import { rooms, getRoomsByBuilding, getInfraStats } from "../../data/infrastructure";
+import { getRoomsByBuilding, computeInfraStats } from "../../data/infrastructure";
+import { useRooms } from "../../context/RoomsDataContext";
+import { useDashboardRole } from "../../context/DashboardRoleContext";
+import RoomEntryForm from "../../components/RoomEntryForm";
+import type { Room } from "../../data/types";
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, ArcElement,
@@ -40,11 +44,14 @@ function getUtilColor(pct: number) {
 }
 
 export default function InfrastructurePage() {
+    const { rooms, addRoom, replaceRoom, removeRoom } = useRooms();
+    const { isAssistant } = useDashboardRole();
     const [activeBuilding, setActiveBuilding] = useState<"A2" | "A3">("A2");
     const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-    const stats = getInfraStats();
+    const [editRoom, setEditRoom] = useState<Room | null>(null);
+    const stats = useMemo(() => computeInfraStats(rooms), [rooms]);
 
-    const buildingRooms = useMemo(() => getRoomsByBuilding(activeBuilding), [activeBuilding]);
+    const buildingRooms = useMemo(() => getRoomsByBuilding(activeBuilding, rooms), [activeBuilding, rooms]);
     const selectedRoomData = selectedRoom ? rooms.find((r) => r.id === selectedRoom) : null;
 
     const utilizationData = useMemo(() => ({
@@ -130,6 +137,26 @@ export default function InfrastructurePage() {
     // Floors grouping
     const floors = [...new Set(buildingRooms.map((r) => r.floor))].sort();
 
+    const handleSaveRoom = async (r: Room) => {
+        if (editRoom) {
+            await replaceRoom(r);
+        } else {
+            await addRoom({ ...r, id: r.id });
+        }
+        setEditRoom(null);
+    };
+
+    const confirmDeleteRoom = async (room: Room) => {
+        if (typeof window === "undefined") return;
+        if (!window.confirm(`Delete room ${room.roomNumber} (${room.id})?`)) return;
+        try {
+            await removeRoom(room.id);
+            if (selectedRoom === room.id) setSelectedRoom(null);
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : "Could not delete.");
+        }
+    };
+
     return (
         <div className="animate-fade-in">
             <div style={{ marginBottom: 28 }}>
@@ -174,6 +201,26 @@ export default function InfrastructurePage() {
                     </button>
                 )}
             </div>
+
+            {isAssistant && (
+                <div
+                    className="card-static"
+                    style={{
+                        padding: 24,
+                        marginBottom: 24,
+                        border: "1px solid rgba(107, 163, 190, 0.35)",
+                        background: "linear-gradient(180deg, rgba(245,252,255,0.95) 0%, var(--card-bg) 100%)",
+                    }}
+                >
+                    <h2 className="heading-serif" style={{ fontSize: 18, margin: "0 0 8px" }}>
+                        Add room
+                    </h2>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
+                        Unique <strong>Room ID</strong> (e.g. A2-G07). Saved via <code>POST /api/rooms</code>. Monthly JSON optional.
+                    </p>
+                    <RoomEntryForm mode="add" defaultBuilding={activeBuilding} variant="inline" onSubmit={handleSaveRoom} />
+                </div>
+            )}
 
             {/* Charts Row */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 28 }}>
@@ -252,8 +299,8 @@ export default function InfrastructurePage() {
                                     }}
                                     onClick={() => setSelectedRoom(room.id)}
                                 >
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
                                             <div style={{
                                                 width: 36, height: 36, borderRadius: 10,
                                                 background: `${color}15`,
@@ -266,13 +313,36 @@ export default function InfrastructurePage() {
                                                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{room.type}</div>
                                             </div>
                                         </div>
-                                        <span className="badge" style={{
-                                            background: `${getUtilColor(room.utilizationPercent)}20`,
-                                            color: getUtilColor(room.utilizationPercent),
-                                            fontWeight: 600,
-                                        }}>
-                                            {room.utilizationPercent}%
-                                        </span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                                            <span className="badge" style={{
+                                                background: `${getUtilColor(room.utilizationPercent)}20`,
+                                                color: getUtilColor(room.utilizationPercent),
+                                                fontWeight: 600,
+                                            }}>
+                                                {room.utilizationPercent}%
+                                            </span>
+                                            {isAssistant && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-sm"
+                                                        title="Edit room"
+                                                        onClick={() => setEditRoom(room)}
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-sm"
+                                                        title="Delete room"
+                                                        style={{ color: "var(--accent-rose)" }}
+                                                        onClick={() => void confirmDeleteRoom(room)}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Utilization Bar */}
@@ -361,6 +431,29 @@ export default function InfrastructurePage() {
                     </div>
                 </div>
             </div>
+
+            {editRoom && (
+                <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setEditRoom(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <h3 className="heading-serif" style={{ fontSize: 20, margin: 0 }}>
+                                Edit room
+                            </h3>
+                            <button type="button" className="btn btn-ghost" style={{ padding: 6 }} onClick={() => setEditRoom(null)} aria-label="Close">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <RoomEntryForm
+                            mode="edit"
+                            initial={editRoom}
+                            defaultBuilding={editRoom.building}
+                            variant="modal"
+                            onCancel={() => setEditRoom(null)}
+                            onSubmit={handleSaveRoom}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

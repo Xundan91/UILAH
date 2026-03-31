@@ -76,17 +76,32 @@ export const rooms: Room[] = [
     { id: 'A3-306', building: 'A3', floor: 3, roomNumber: 'A3-306', type: 'Tutorial Room', capacity: 35, utilizationPercent: 45, monthlyUtilization: genMonthly(45), equipment: ['Whiteboard', 'AC'] },
 ];
 
-export const getRoomsByBuilding = (building: 'A2' | 'A3') =>
-    rooms.filter((r) => r.building === building);
+export const getRoomsByBuilding = (building: 'A2' | 'A3', list: Room[]) =>
+    list.filter((r) => r.building === building);
 
-export const getInfraStats = (): InfraStats => {
-    const classrooms = rooms.filter((r) => r.type === 'Classroom');
-    const labs = rooms.filter((r) => r.type === 'Lab');
-    const tutorials = rooms.filter((r) => r.type === 'Tutorial Room');
-    const libraries = rooms.filter((r) => r.type === 'Library');
+/** Aggregate stats for any room list (e.g. from API). */
+export function computeInfraStats(roomList: Room[]): InfraStats {
+    if (roomList.length === 0) {
+        return {
+            totalClassrooms: 0,
+            totalLabs: 0,
+            totalTutorialRooms: 0,
+            totalLibraries: 0,
+            totalCapacity: 0,
+            avgUtilization: 0,
+            computerSystems: 0,
+        };
+    }
+    const classrooms = roomList.filter((r) => r.type === 'Classroom');
+    const labs = roomList.filter((r) => r.type === 'Lab');
+    const tutorials = roomList.filter((r) => r.type === 'Tutorial Room');
+    const libraries = roomList.filter((r) => r.type === 'Library');
     const totalComputers = labs.reduce((acc, r) => {
         const match = r.equipment?.find((e) => e.includes('Computer Systems'));
-        if (match) { const num = parseInt(match); return acc + (isNaN(num) ? 0 : num); }
+        if (match) {
+            const num = parseInt(match, 10);
+            return acc + (isNaN(num) ? 0 : num);
+        }
         return acc;
     }, 0);
 
@@ -95,8 +110,10 @@ export const getInfraStats = (): InfraStats => {
         totalLabs: labs.length,
         totalTutorialRooms: tutorials.length,
         totalLibraries: libraries.length,
-        totalCapacity: rooms.reduce((acc, r) => acc + r.capacity, 0),
-        avgUtilization: Math.round(rooms.reduce((acc, r) => acc + r.utilizationPercent, 0) / rooms.length),
+        totalCapacity: roomList.reduce((acc, r) => acc + r.capacity, 0),
+        avgUtilization: Math.round(roomList.reduce((acc, r) => acc + r.utilizationPercent, 0) / roomList.length),
         computerSystems: totalComputers,
     };
-};
+}
+
+export const getInfraStats = (): InfraStats => computeInfraStats(rooms);

@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, Users, Filter } from "lucide-react";
-import { departments } from "../../data/departments";
-import { students } from "../../data/students";
+import { departments, totalProgramOfferings, programCodeToSlug } from "../../data/departments";
+import { useStudents } from "../../context/StudentsDataContext";
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, ArcElement,
@@ -15,59 +15,56 @@ import { Bar, Doughnut } from "react-chartjs-2";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
 export default function StudentsPage() {
-    const [categoryFilter, setCategoryFilter] = useState<"all" | "core" | "specialised">("all");
+    const { students } = useStudents();
+    const [instituteFilter, setInstituteFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
 
     const filteredDepts = useMemo(() => {
         return departments.filter((d) => {
-            if (categoryFilter !== "all" && d.category !== categoryFilter) return false;
-            if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            if (instituteFilter !== "all" && d.id !== instituteFilter) return false;
+            if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase()) && !d.shortName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             return true;
         });
-    }, [categoryFilter, searchQuery]);
+    }, [instituteFilter, searchQuery]);
 
     const enrollmentData = useMemo(() => ({
-        labels: filteredDepts.map((d) => d.name.replace("Department of ", "").replace(" Studies", "").slice(0, 14)),
+        labels: filteredDepts.map((d) => d.shortName),
         datasets: [{
             label: "Students",
             data: filteredDepts.map((d) => students.filter((s) => s.department === d.id).length),
             backgroundColor: [
                 "rgba(194,117,72,0.7)", "rgba(212,168,83,0.7)", "rgba(139,157,131,0.7)",
                 "rgba(155,142,196,0.7)", "rgba(196,122,138,0.7)", "rgba(107,163,190,0.7)",
-                "rgba(194,117,72,0.5)", "rgba(212,168,83,0.5)", "rgba(139,157,131,0.5)",
-                "rgba(155,142,196,0.5)", "rgba(196,122,138,0.5)",
             ],
             borderRadius: 6,
             borderSkipped: false,
         }],
     }), [filteredDepts]);
 
-    const categoryData = useMemo(() => {
-        const core = students.filter((s) => departments.find((d) => d.id === s.department)?.category === "core").length;
-        const spec = students.filter((s) => departments.find((d) => d.id === s.department)?.category === "specialised").length;
-        return {
-            labels: ["Core Academic", "Specialised Areas"],
-            datasets: [{
-                data: [core, spec],
-                backgroundColor: ["rgba(194,117,72,0.7)", "rgba(139,157,131,0.7)"],
-                borderWidth: 0,
-                hoverOffset: 8,
-            }],
-        };
-    }, []);
+    const instituteSplitData = useMemo(() => ({
+        labels: departments.map((d) => d.shortName),
+        datasets: [{
+            data: departments.map((d) => students.filter((s) => s.department === d.id).length),
+            backgroundColor: [
+                "rgba(194,117,72,0.75)", "rgba(212,168,83,0.75)", "rgba(139,157,131,0.75)",
+                "rgba(155,142,196,0.75)", "rgba(196,122,138,0.75)", "rgba(107,163,190,0.75)",
+            ],
+            borderWidth: 0,
+            hoverOffset: 8,
+        }],
+    }), []);
 
     return (
         <div className="animate-fade-in">
             <div style={{ marginBottom: 28 }}>
                 <h1 className="heading-serif" style={{ fontSize: 28, margin: 0 }}>
-                    Student Data — Academic Departments
+                    Student Data — Institutes
                 </h1>
                 <p style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4 }}>
-                    Select a department to view detailed student records
+                    Six university institutes (UIA, UID, UIFVA, UILAH, UIMS, UITTR) and their degree programs
                 </p>
             </div>
 
-            {/* Quick Stats */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 28 }}>
                 <div className="stat-card terracotta">
                     <Users size={18} color="var(--accent-terracotta)" />
@@ -76,24 +73,19 @@ export default function StudentsPage() {
                 </div>
                 <div className="stat-card sage">
                     <Users size={18} color="var(--accent-sage)" />
-                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>
-                        {departments.filter((d) => d.category === "core").length}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Core Departments</div>
+                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>{departments.length}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Institutes</div>
                 </div>
                 <div className="stat-card lavender">
                     <Users size={18} color="var(--accent-lavender)" />
-                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>
-                        {departments.filter((d) => d.category === "specialised").length}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Specialised Areas</div>
+                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>{totalProgramOfferings}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Program offerings</div>
                 </div>
             </div>
 
-            {/* Charts */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 28 }}>
                 <div className="chart-container">
-                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Students per Department</h3>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Students per Institute</h3>
                     <div style={{ height: 240 }}>
                         <Bar data={enrollmentData} options={{
                             responsive: true, maintainAspectRatio: false,
@@ -106,35 +98,40 @@ export default function StudentsPage() {
                     </div>
                 </div>
                 <div className="chart-container">
-                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Core vs Specialised</h3>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>By Institute</h3>
                     <div style={{ height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Doughnut data={categoryData} options={{
+                        <Doughnut data={instituteSplitData} options={{
                             responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { position: "bottom", labels: { font: { size: 11 } } } },
+                            plugins: { legend: { position: "bottom", labels: { font: { size: 10 } } } },
                             cutout: "65%",
                         }} />
                     </div>
                 </div>
             </div>
 
-            {/* Filter */}
             <div className="card-static" style={{ padding: 16, marginBottom: 24 }}>
                 <div className="filter-bar" style={{ padding: 0 }}>
                     <Filter size={14} color="var(--text-muted)" />
                     <input
-                        type="text" placeholder="Search department…" value={searchQuery}
+                        type="text" placeholder="Search institute…" value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="search-input" style={{ maxWidth: 220 }}
                     />
-                    <div className="tab-group" style={{ width: "auto" }}>
-                        <button className={`tab ${categoryFilter === "all" ? "active" : ""}`} onClick={() => setCategoryFilter("all")}>All</button>
-                        <button className={`tab ${categoryFilter === "core" ? "active" : ""}`} onClick={() => setCategoryFilter("core")}>Core Academic</button>
-                        <button className={`tab ${categoryFilter === "specialised" ? "active" : ""}`} onClick={() => setCategoryFilter("specialised")}>Specialised</button>
+                    <div className="tab-group" style={{ width: "auto", flexWrap: "wrap" }}>
+                        <button className={`tab ${instituteFilter === "all" ? "active" : ""}`} onClick={() => setInstituteFilter("all")}>All</button>
+                        {departments.map((d) => (
+                            <button
+                                key={d.id}
+                                className={`tab ${instituteFilter === d.id ? "active" : ""}`}
+                                onClick={() => setInstituteFilter(d.id)}
+                            >
+                                {d.shortName}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
 
-            {/* Department Cards */}
             <div style={{
                 display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
                 gap: 16,
@@ -146,39 +143,41 @@ export default function StudentsPage() {
                         : "—";
                     const dropped = deptStudents.filter((s) => s.dropYear !== null).length;
                     return (
-                        <Link
-                            key={dept.id}
-                            href={`/dashboard/department/${dept.id}`}
-                            style={{ textDecoration: "none" }}
-                        >
-                            <div className={`card animate-fade-in stagger-${(i % 5) + 1}`} style={{ padding: 22 }}>
+                        <div key={dept.id} className={`card animate-fade-in stagger-${(i % 5) + 1}`} style={{ padding: 22 }}>
+                            <Link href={`/dashboard/department/${dept.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                         <span style={{ fontSize: 30 }}>{dept.icon}</span>
                                         <div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", color: "var(--accent-terracotta)" }}>{dept.shortName}</div>
                                             <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
-                                                {dept.name.replace("Department of ", "")}
+                                                {dept.name}
                                             </h3>
-                                            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>
-                                                {dept.description}
-                                            </p>
                                         </div>
                                     </div>
                                     <ArrowRight size={16} color="var(--text-muted)" />
                                 </div>
-
-                                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-                                    <span className="badge badge-terracotta">{deptStudents.length} Students</span>
-                                    <span className="badge badge-sage">Avg CGPA: {avgCgpa}</span>
-                                    {dropped > 0 && <span className="badge badge-rose">{dropped} Dropped</span>}
-                                </div>
-
-                                <span className={`badge ${dept.category === "core" ? "badge-gold" : "badge-sky"}`}
-                                    style={{ marginTop: 8, fontSize: 11 }}>
-                                    {dept.category === "core" ? "Core Academic" : "Specialised Area"}
-                                </span>
+                            </Link>
+                            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "10px 0 8px" }}>{dept.description}</p>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 8 }}>Programs</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                                {dept.programs.map((p) => (
+                                    <Link
+                                        key={p.code}
+                                        href={`/dashboard/department/${dept.id}/program/${programCodeToSlug(p.code)}`}
+                                        className="badge badge-sage"
+                                        style={{ fontSize: 11, textDecoration: "none" }}
+                                    >
+                                        {p.name} · {p.code}
+                                    </Link>
+                                ))}
                             </div>
-                        </Link>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <span className="badge badge-terracotta">{deptStudents.length} Students</span>
+                                <span className="badge badge-sage">Avg CGPA: {avgCgpa}</span>
+                                {dropped > 0 && <span className="badge badge-rose">{dropped} Dropped</span>}
+                            </div>
+                        </div>
                     );
                 })}
             </div>

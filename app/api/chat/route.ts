@@ -5,43 +5,25 @@ const GEMINI_MODEL = 'gemini-3-flash-preview';
 
 // Build a comprehensive context summary from the dashboard data
 function buildDashboardContext(): string {
-    return `You are UILAH AI Assistant for the University Institute of Liberal Arts & Humanities (UILAH) at Chandigarh University. You have complete knowledge of the dashboard data.
+    return `You are UILAH AI Assistant for Chandigarh University. The dashboard covers six University Institutes (not the old "core vs specialised" department split). Use the institute and program structure below.
 
 === UNIVERSITY OVERVIEW ===
 Total Students: 6,175
 Total Enrolled (active, not dropped): ~5,850
 Total Faculty: ~180
-Total Departments: 11 (5 Core Academic + 6 Specialised Areas)
-Total Placements (2022-2025): ~1,800
+University Institutes: 6 (UIA, UID, UIFVA, UILAH, UIMS, UITTR)
+Total distinct degree programs listed: 27
+Total Placements (2022-2025): large dataset across all institutes
 Total Events Conducted: 24+
 Buildings: A2 Block & A3 Block (4 floors each)
 
-=== DEPARTMENTS (Student Count | Faculty Count) ===
-CORE ACADEMIC:
-1. English — 980 students, 28 faculty (Student:Teacher ratio = 35:1)
-   Courses: British Literature, American Literature, Postcolonial Studies, Creative Writing, Linguistics Foundations, Cultural Studies, World Literature, Modern Poetry
-2. Psychology — 850 students, 24 faculty (ratio = 35:1)
-   Courses: Clinical Psychology, Cognitive Psychology, Neuropsychology, Forensic Psychology, Developmental Psychology, Social Psychology, Abnormal Psychology, Health Psychology
-3. Economics — 780 students, 22 faculty (ratio = 35:1)
-   Courses: Microeconomics, Macroeconomics, Indian Economy, Research Methodology, Development Economics, Econometrics, International Trade, Public Finance
-4. Political Science — 720 students, 20 faculty (ratio = 36:1)
-   Courses: International Relations, Diplomacy, Comparative Politics, Political Theory, Public Policy, Indian Government, Constitutional Law, Political Sociology
-5. Sociology — 650 students, 18 faculty (ratio = 36:1)
-   Courses: Social Structures, Gender Studies, Urban Sociology, Rural Sociology, Research Methods, Social Movements, Family & Marriage, Environmental Sociology
-
-SPECIALISED AREAS:
-6. Language Studies — 480 students, 14 faculty (ratio = 34:1)
-   Courses: French, German, Spanish, Linguistics, Translation Studies, Comparative Philology, Hindi Literature
-7. Performing Arts — 380 students, 12 faculty (ratio = 32:1)
-   Courses: Theatre Production, Acting Techniques, Dance Forms, Music Theory, Creative Expression, Stage Design
-8. Fine Arts & Design — 420 students, 12 faculty (ratio = 35:1)
-   Courses: Visual Arts, Sculpture, Digital Art, Art History, Media Studies, Design Thinking, Photography, Graphic Design
-9. Humanities — 385 students, 12 faculty (ratio = 32:1)
-   Courses: World History, Indian History, Philosophy, Geography, Ethics, Cultural Heritage, Archaeology, Religious Studies
-10. Film & Media — 280 students, 10 faculty (ratio = 28:1)
-    Courses: Film Studies, Screenwriting, Film Theory, Digital Media, Documentary Making, Media Ethics, Cinematography
-11. Emerging Technologies — 250 students, 8 faculty (ratio = 31:1)
-    Courses: AI for Social Sciences, Data Analytics, Digital Humanities, Machine Learning Basics, Tech Ethics, Computational Linguistics
+=== INSTITUTES & PROGRAMS (code) ===
+UIA — University Institute of Architecture: BArch (AR201), M.Arch. (AR301)
+UID — University Institute of Design: Bachelor of Design Product & Industrial (BD205), Bachelor of Design Fashion (BD203), MFA (MR302), BFA (BS204)
+UIFVA — Film & Visual Arts: B.Sc. Hons Digital Film Making (AN205), M.Sc A & MT (AN301), B.Sc. Animation VFX Gaming ITP (AN801), B.Sc. Animation VFX Gaming (AN203)
+UILAH — Liberal Arts & Humanities: B.A. Psy (BA203), B.A. Hons Liberal Arts (LA202), M.A. Psychology (MA303), M.A. Clinical Psychology (HY302), M.A. Politics & IR (MA306), M.A. English (MA302), B.A. Hons Social Work (BA202), B.A. Hons Liberal Arts ITP (LA801), B.A. Psychology Hons ITP (BA801)
+UIMS — Media Studies: B.A. JMC (BJ201), M.A. JMC (MJ301), B.A. JMC ITP (BJ801)
+UITTR — Teacher Training & Research: P.G. Dip Yoga Education (EY301), B.P.Ed (BE201), B.A. (BA301), B.Sc. + B.Ed. (BS502), B.A. + B.Ed. (BA501)
 
 === STUDENT DEMOGRAPHICS ===
 Gender: ~44% Male, ~53% Female, ~3% Other

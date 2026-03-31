@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import ChatPanel from "../components/ChatPanel";
+import { DashboardRoleProvider, useDashboardRole } from "../context/DashboardRoleContext";
+import { StudentsDataProvider, useStudents } from "../context/StudentsDataContext";
+import { PlacementsDataProvider } from "../context/PlacementsDataContext";
+import { FacultyDataProvider } from "../context/FacultyDataContext";
+import { RoomsDataProvider } from "../context/RoomsDataContext";
 
 const navItems = [
     { href: "/dashboard", label: "Overall", icon: LayoutDashboard },
@@ -39,6 +44,11 @@ export default function DashboardLayout({
     };
 
     return (
+        <DashboardRoleProvider>
+        <StudentsDataProvider>
+        <PlacementsDataProvider>
+        <FacultyDataProvider>
+        <RoomsDataProvider>
         <div style={{ display: "flex", minHeight: "100vh" }}>
             {/* Mobile toggle */}
             <button
@@ -101,6 +111,13 @@ export default function DashboardLayout({
                     ))}
                 </nav>
 
+                <div style={{ padding: "0 24px 16px", borderBottom: "1px solid var(--border-light)" }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                        Access role
+                    </div>
+                    <RoleSwitcher />
+                </div>
+
                 {/* User Info */}
                 <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border-light)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
@@ -139,6 +156,7 @@ export default function DashboardLayout({
                     minHeight: "100vh", background: "var(--background)",
                 }}
             >
+                <StudentDataBanner />
                 {children}
             </main>
 
@@ -152,5 +170,64 @@ export default function DashboardLayout({
             {/* AI Chat */}
             <ChatPanel />
         </div>
+        </RoomsDataProvider>
+        </FacultyDataProvider>
+        </PlacementsDataProvider>
+        </StudentsDataProvider>
+        </DashboardRoleProvider>
+    );
+}
+
+function StudentDataBanner() {
+    const { loading, error } = useStudents();
+    if (loading) {
+        return (
+            <div
+                className="card-static"
+                style={{
+                    padding: "10px 14px",
+                    marginBottom: 20,
+                    fontSize: 13,
+                    color: "var(--text-secondary)",
+                    background: "rgba(107,163,190,0.12)",
+                }}
+            >
+                Loading student data from the server…
+            </div>
+        );
+    }
+    if (error) {
+        return (
+            <div
+                className="card-static"
+                style={{
+                    padding: "10px 14px",
+                    marginBottom: 20,
+                    fontSize: 13,
+                    color: "var(--accent-rose)",
+                    background: "rgba(196,122,138,0.12)",
+                }}
+            >
+                Student data could not be loaded ({error}). Check <code>DATABASE_URL</code> and run{" "}
+                <code>npx prisma db push</code> and <code>npm run db:seed</code>.
+            </div>
+        );
+    }
+    return null;
+}
+
+function RoleSwitcher() {
+    const { role, setRole } = useDashboardRole();
+    return (
+        <select
+            className="filter-select"
+            style={{ width: "100%", fontSize: 12 }}
+            value={role}
+            onChange={(e) => setRole(e.target.value as "professor" | "assistant")}
+            aria-label="Dashboard access role"
+        >
+            <option value="professor">Professor (view only)</option>
+            <option value="assistant">Personal Assistant (edit data)</option>
+        </select>
     );
 }

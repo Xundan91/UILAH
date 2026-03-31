@@ -53,13 +53,15 @@ const valueAddCourses = [
     'Personality Development',
 ];
 
-const departmentIds = ['english', 'psychology', 'economics', 'political-science', 'sociology', 'language-studies', 'performing-arts', 'fine-arts', 'humanities', 'film-media', 'emerging-tech'];
+const departmentIds = ['uia', 'uid', 'uifva', 'uilah', 'uims', 'uittr'];
 
-// Placement rate varies by department — more employable depts get more placements
 const deptPlacementWeight: Record<string, number> = {
-    'english': 1.0, 'psychology': 1.1, 'economics': 1.3, 'political-science': 0.9,
-    'sociology': 0.8, 'language-studies': 0.7, 'performing-arts': 0.6,
-    'fine-arts': 0.65, 'humanities': 0.7, 'film-media': 0.75, 'emerging-tech': 1.4,
+    uia: 0.85,
+    uid: 1.0,
+    uifva: 1.05,
+    uilah: 1.15,
+    uims: 1.2,
+    uittr: 0.9,
 };
 
 function seededRandom(seed: number): () => number {
@@ -129,6 +131,11 @@ function generatePlacements(): PlacementRecord[] {
 }
 
 export const placements = generatePlacements();
+
+/** Fresh copy for DB seeding. */
+export function getInitialPlacements(): PlacementRecord[] {
+    return generatePlacements();
+}
 
 export const getPlacementsByDepartment = (deptId: string) =>
     placements.filter((p) => p.department === deptId);

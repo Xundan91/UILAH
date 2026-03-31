@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Institute {
+  id           String    @id
+  shortName    String
+  name         String
+  description  String
+  icon         String
+  facultyCount Int
+  programs     Program[]
+}
+
+model Program {
+  id          String    @id @default(cuid())
+  code        String
+  name        String
+  instituteId String
+  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  students    Student[]
+
+  @@unique([instituteId, code])
+}
+
+model Student {
+  id                    String   @id
+  programId             String
+  program               Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name                  String
+  age                   Int
+  gender                String
+  religion              String
+  semester              Int
+  enrollmentYear        Int
+  cgpa                  Float
+  eventsAttended        Int
+  coursesEnrolled       String[]
+  dropYear              Int?
+  activities            Json     @default("[]")
+  email                 String
+  phone                 String
+  educationalBackground String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([programId])
+}
+
+model Placement {
+  id               String   @id
+  studentId        String
+  studentName      String
+  department       String
+  year             Int
+  company          String
+  role             String
+  package          Float
+  crcRegistered    Boolean  @default(false)
+  email            String
+  phone            String
+  isAlumni         Boolean  @default(false)
+  graduationYear   Int?
+  valueAddCourses  String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([department])
+  @@index([year])
+}
+
+model FacultyProfile {
+  id                 String   @id
+  name               String
+  gender             String
+  age                Int
+  religion           String
+  department         String
+  designation        String
+  education          String
+  educationDetails   String
+  specialization     String[]
+  coursesTeaching    String[]
+  publications       Json
+  achievements       String[]
+  facultyDevelopment String[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([department])
+}
+
+model InfraRoom {
+  id                   String   @id
+  building             String
+  floor                Int
+  roomNumber           String
+  type                 String
+  capacity             Int
+  utilizationPercent   Int
+  monthlyUtilization   Json
+  equipment            String[] @default([])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([building])
+}

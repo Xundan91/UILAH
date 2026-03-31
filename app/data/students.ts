@@ -1,4 +1,5 @@
 import { Student } from './types';
+import { departments } from './departments';
 
 const firstNames = [
     'Aarav', 'Priya', 'Rohan', 'Sneha', 'Vikram', 'Ananya', 'Arjun', 'Meera', 'Karan', 'Ishita',
@@ -21,30 +22,22 @@ const lastNames = [
 ];
 
 const religions = ['Hindu', 'Muslim', 'Sikh', 'Christian', 'Buddhist', 'Jain'];
-const religionWeights = [0.55, 0.18, 0.12, 0.08, 0.04, 0.03]; // realistic Indian university distribution
+const religionWeights = [0.55, 0.18, 0.12, 0.08, 0.04, 0.03];
 
 const educationalBackgrounds = ['CBSE Board', 'ICSE Board', 'State Board', 'International Baccalaureate', 'NIOS'];
 const bgWeights = [0.40, 0.15, 0.35, 0.06, 0.04];
 
-// Target: ~6175 students across departments
-const departmentTargets: Record<string, number> = {
-    'english': 980, 'psychology': 850, 'economics': 780, 'political-science': 720,
-    'sociology': 650, 'language-studies': 480, 'performing-arts': 380,
-    'fine-arts': 420, 'humanities': 385, 'film-media': 280, 'emerging-tech': 250,
-};
+const departmentTargets: Record<string, number> = Object.fromEntries(
+    departments.map((d) => [d.id, d.studentCount])
+);
 
-const departmentCourses: Record<string, string[]> = {
-    'english': ['British Literature', 'American Literature', 'Postcolonial Studies', 'Creative Writing', 'Linguistics Foundations', 'Cultural Studies', 'World Literature', 'Modern Poetry'],
-    'psychology': ['Clinical Psychology', 'Cognitive Psychology', 'Neuropsychology', 'Forensic Psychology', 'Developmental Psychology', 'Social Psychology', 'Abnormal Psychology', 'Health Psychology'],
-    'economics': ['Microeconomics', 'Macroeconomics', 'Indian Economy', 'Research Methodology', 'Development Economics', 'Econometrics', 'International Trade', 'Public Finance'],
-    'political-science': ['International Relations', 'Diplomacy', 'Comparative Politics', 'Political Theory', 'Public Policy', 'Indian Government', 'Constitutional Law', 'Political Sociology'],
-    'sociology': ['Social Structures', 'Gender Studies', 'Urban Sociology', 'Rural Sociology', 'Research Methods', 'Social Movements', 'Family & Marriage', 'Environmental Sociology'],
-    'language-studies': ['French I', 'French II', 'German I', 'German II', 'Spanish I', 'Spanish II', 'Linguistics', 'Translation Studies', 'Comparative Philology', 'Hindi Literature'],
-    'performing-arts': ['Theatre Production', 'Acting Techniques', 'Dance Forms', 'Music Theory', 'Creative Expression', 'Stage Design', 'Western Music', 'Indian Classical'],
-    'fine-arts': ['Visual Arts', 'Sculpture', 'Digital Art', 'Art History', 'Media Studies', 'Design Thinking', 'Photography', 'Graphic Design'],
-    'humanities': ['World History', 'Indian History', 'Philosophy', 'Geography', 'Ethics', 'Cultural Heritage', 'Archaeology', 'Religious Studies'],
-    'film-media': ['Film Studies', 'Screenwriting', 'Film Theory', 'Digital Media', 'Documentary Making', 'Media Ethics', 'Cinematography', 'Sound Design'],
-    'emerging-tech': ['AI for Social Sciences', 'Data Analytics', 'Digital Humanities', 'Machine Learning Basics', 'Tech Ethics', 'Computational Linguistics', 'NLP Fundamentals', 'Data Visualization'],
+const instituteCourses: Record<string, string[]> = {
+    uia: ['Architectural Design Studio', 'Building Materials', 'Structural Systems', 'History of Architecture', 'Environmental Design', 'Urban Design', 'Construction Technology', 'Landscape Architecture'],
+    uid: ['Design Fundamentals', 'Product Design Studio', 'Industrial Ergonomics', 'Fashion Illustration', 'Textile Studies', 'Design Thinking', 'Portfolio Development', 'Digital Design Tools'],
+    uifva: ['Digital Filmmaking', 'Animation Principles', 'VFX Compositing', '3D Modeling', 'Game Design', 'Screenwriting', 'Cinematography', 'Post-Production'],
+    uilah: ['Psychology Core', 'Research Methods', 'Literary Theory', 'Social Work Practice', 'International Relations', 'English Literature', 'Clinical Psychology', 'Liberal Arts Seminar'],
+    uims: ['News Reporting', 'Media Ethics', 'Broadcast Journalism', 'Digital Media', 'Public Relations', 'Content Writing', 'Video Production', 'Media Law'],
+    uittr: ['Educational Psychology', 'Pedagogy', 'Yoga Philosophy', 'Sports Science', 'Curriculum Design', 'Classroom Management', 'Assessment Methods', 'Inclusive Education'],
 };
 
 const activityNames = [
@@ -64,7 +57,7 @@ const activityNames = [
     { name: 'Photography Contest', type: 'Cultural' as const },
     { name: 'Guest Lecture Series', type: 'Academic' as const },
     { name: 'Blood Donation Camp', type: 'Social' as const },
-    { name: 'Inter-Department Quiz', type: 'Academic' as const },
+    { name: 'Inter-Institute Quiz', type: 'Academic' as const },
     { name: 'Dance Competition - Nritya', type: 'Cultural' as const },
     { name: 'Entrepreneurship Workshop', type: 'Academic' as const },
     { name: 'Annual Sports Day', type: 'Sports' as const },
@@ -105,6 +98,13 @@ function pickN<T>(arr: T[], min: number, max: number): T[] {
     return shuffled.slice(0, count);
 }
 
+/** Map enrollment cohort to current semester (1–8) for display/filtering. */
+function semesterForEnrollment(enrollmentYear: number): number {
+    const yearInProgram = Math.min(4, Math.max(1, 2025 - enrollmentYear));
+    const base = (yearInProgram - 1) * 2 + 1;
+    return Math.min(8, base + (rand() < 0.5 ? 0 : 1));
+}
+
 function generateStudents(): Student[] {
     const allStudents: Student[] = [];
     let id = 1;
@@ -112,27 +112,33 @@ function generateStudents(): Student[] {
 
     for (const deptId of departmentIds) {
         const target = departmentTargets[deptId];
+        const deptMeta = departments.find((d) => d.id === deptId);
+        const programs = deptMeta?.programs ?? [];
+        const coursePool = instituteCourses[deptId] || [];
+
         for (let i = 0; i < target; i++) {
             const firstName = pick(firstNames);
             const lastName = pick(lastNames);
-            const enrollmentYear = 2021 + Math.floor(rand() * 4); // 2021-2024
+            const enrollmentYear = 2021 + Math.floor(rand() * 4);
             const yearInProgram = 2025 - enrollmentYear;
 
-            // CGPA distribution: bell curve centered around 7.2
-            const cgpaBase = 5.0 + rand() * 2.5 + rand() * 2.5; // roughly normal, mean ~7.5
+            const cgpaBase = 5.0 + rand() * 2.5 + rand() * 2.5;
             const cgpa = Math.round(Math.min(10, Math.max(4.0, cgpaBase)) * 100) / 100;
 
-            const numActivities = Math.floor(rand() * 8); // 0-7 activities
+            const numActivities = Math.floor(rand() * 8);
             const activities = pickN(activityNames, 0, Math.min(numActivities, 7)).map((a) => ({
                 name: a.name,
                 type: a.type,
                 date: `${2023 + Math.floor(rand() * 3)}-${String(1 + Math.floor(rand() * 12)).padStart(2, '0')}-${String(1 + Math.floor(rand() * 28)).padStart(2, '0')}`,
             }));
 
-            // Drop rate: ~8% for older students, ~3% for newer
             const dropChance = yearInProgram >= 3 ? 0.08 : yearInProgram >= 2 ? 0.05 : 0.03;
 
             const gender = rand() < 0.44 ? 'Male' : rand() < 0.93 ? 'Female' : 'Other';
+
+            const prog = programs.length ? pick(programs) : { name: 'Program', code: '—' };
+            const programLabel = `${prog.name} [${prog.code}]`;
+            const semester = semesterForEnrollment(enrollmentYear);
 
             allStudents.push({
                 id: `STU${String(id).padStart(5, '0')}`,
@@ -141,11 +147,13 @@ function generateStudents(): Student[] {
                 gender,
                 religion: weightedPick(religions, religionWeights),
                 department: deptId,
-                program: `B.A. ${deptId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}`,
+                programCode: prog.code,
+                program: programLabel,
+                semester,
                 enrollmentYear,
                 cgpa,
                 eventsAttended: activities.length,
-                coursesEnrolled: pickN(departmentCourses[deptId] || [], 2, 5),
+                coursesEnrolled: pickN(coursePool, 2, 5),
                 dropYear: rand() < dropChance ? enrollmentYear + 1 + Math.floor(rand() * 2) : null,
                 activities,
                 email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${String(id).padStart(3, '0')}@cu.edu.in`,
@@ -158,13 +166,34 @@ function generateStudents(): Student[] {
     return allStudents;
 }
 
+/** Deterministic seed data (used before localStorage overlay). */
+export function getInitialStudents(): Student[] {
+    return generateStudents();
+}
+
 export const students = generateStudents();
 
+export function filterStudentsByDepartment(all: Student[], deptId: string): Student[] {
+    return all.filter((s) => s.department === deptId);
+}
+
+export function filterStudentsByProgram(all: Student[], deptId: string, programCode: string): Student[] {
+    return all.filter(
+        (s) =>
+            s.department === deptId &&
+            s.programCode.toLowerCase() === programCode.toLowerCase()
+    );
+}
+
+/** @deprecated use filterStudentsByDepartment with list from context */
 export const getStudentsByDepartment = (deptId: string) =>
     students.filter((s) => s.department === deptId);
 
-export const getStudentById = (id: string) =>
-    students.find((s) => s.id === id);
+/** @deprecated use filterStudentsByProgram with list from context */
+export const getStudentsByProgram = (deptId: string, programCode: string) =>
+    filterStudentsByProgram(students, deptId, programCode);
+
+export const getStudentById = (id: string) => students.find((s) => s.id === id);
 
 export const totalEnrolled = students.filter((s) => s.dropYear === null).length;
 export const totalStudents = students.length;

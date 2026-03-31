@@ -3,10 +3,13 @@
 import { useMemo, useState } from "react";
 import {
     Filter, Briefcase, Users, TrendingUp, Award,
-    Mail, Phone, BookOpen,
+    Mail, Phone, BookOpen, Pencil, Trash2, X,
 } from "lucide-react";
 import { departments } from "../../data/departments";
-import { placements, alumni } from "../../data/placements";
+import { usePlacements } from "../../context/PlacementsDataContext";
+import { useDashboardRole } from "../../context/DashboardRoleContext";
+import PlacementEntryForm from "../../components/PlacementEntryForm";
+import type { PlacementRecord } from "../../data/types";
 import {
     Chart as ChartJS,
     CategoryScale, LinearScale, BarElement, ArcElement,
@@ -18,6 +21,9 @@ import { Bar, Doughnut, Line } from "react-chartjs-2";
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Tooltip, Legend);
 
 export default function PlacementPage() {
+    const { placements, addPlacement, replacePlacement, removePlacement } = usePlacements();
+    const { isAssistant } = useDashboardRole();
+    const [editPlacement, setEditPlacement] = useState<PlacementRecord | null>(null);
     const [view, setView] = useState<"all" | "crc" | "non-crc">("all");
     const [deptFilter, setDeptFilter] = useState("all");
     const [yearFilter, setYearFilter] = useState("all");
@@ -25,7 +31,7 @@ export default function PlacementPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     const filtered = useMemo(() => {
-        const base = showAlumni ? alumni : placements;
+        const base = showAlumni ? placements.filter((p) => p.isAlumni) : placements;
         return base.filter((p) => {
             if (view === "crc" && !p.crcRegistered) return false;
             if (view === "non-crc" && p.crcRegistered) return false;
@@ -34,10 +40,10 @@ export default function PlacementPage() {
             if (searchQuery && !p.studentName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
             return true;
         });
-    }, [view, deptFilter, yearFilter, showAlumni, searchQuery]);
+    }, [placements, view, deptFilter, yearFilter, showAlumni, searchQuery]);
 
     const deptChartData = useMemo(() => {
-        const deptNames = departments.map((d) => d.name.replace("Department of ", "").slice(0, 12));
+        const deptNames = departments.map((d) => d.shortName);
         return {
             labels: deptNames,
             datasets: [{
@@ -75,7 +81,7 @@ export default function PlacementPage() {
                 },
             ],
         };
-    }, []);
+    }, [placements]);
 
     const crcSplit = useMemo(() => ({
         labels: ["CRC Registered", "Non-CRC"],
@@ -92,6 +98,26 @@ export default function PlacementPage() {
     const avgPackage = filtered.length > 0
         ? (filtered.reduce((a, p) => a + p.package, 0) / filtered.length).toFixed(1)
         : "0";
+
+    const handleSavePlacement = async (p: PlacementRecord) => {
+        if (!p.id) {
+            const { id: _id, ...rest } = p;
+            await addPlacement(rest);
+        } else {
+            await replacePlacement(p);
+        }
+        setEditPlacement(null);
+    };
+
+    const confirmDeletePlacement = async (p: PlacementRecord) => {
+        if (typeof window === "undefined") return;
+        if (!window.confirm(`Remove placement record for ${p.studentName}?`)) return;
+        try {
+            await removePlacement(p.id);
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : "Could not delete.");
+        }
+    };
 
     return (
         <div className="animate-fade-in">
@@ -118,13 +144,13 @@ export default function PlacementPage() {
                 </div>
                 <div className="stat-card gold">
                     <TrendingUp size={18} color="var(--accent-gold)" />
-                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>{avgPackage} LPA</div>
+                    <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>{filtered.length ? avgPackage : "0"} LPA</div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Avg Package</div>
                 </div>
                 <div className="stat-card lavender">
                     <Award size={18} color="var(--accent-lavender)" />
                     <div style={{ fontSize: 26, fontWeight: 700, marginTop: 8 }}>
-                        {Math.max(...filtered.map((p) => p.package), 0).toFixed(1)} LPA
+                        {filtered.length ? Math.max(...filtered.map((p) => p.package)).toFixed(1) : "0"} LPA
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Highest Package</div>
                 </div>
@@ -153,8 +179,8 @@ export default function PlacementPage() {
                         className="search-input" style={{ maxWidth: 200 }}
                     />
                     <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-                        <option value="all">All Departments</option>
-                        {departments.map((d) => <option key={d.id} value={d.id}>{d.name.replace("Department of ", "")}</option>)}
+                        <option value="all">All Institutes</option>
+                        {departments.map((d) => <option key={d.id} value={d.id}>{d.shortName} — {d.name}</option>)}
                     </select>
                     <select className="filter-select" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
                         <option value="all">All Years</option>
@@ -166,10 +192,35 @@ export default function PlacementPage() {
                 </div>
             </div>
 
+            {isAssistant && (
+                <div
+                    className="card-static"
+                    style={{
+                        padding: 24,
+                        marginBottom: 24,
+                        border: "1px solid rgba(194, 117, 72, 0.25)",
+                        background: "linear-gradient(180deg, rgba(255,250,245,0.9) 0%, var(--card-bg) 100%)",
+                    }}
+                >
+                    <h2 className="heading-serif" style={{ fontSize: 18, margin: "0 0 8px" }}>
+                        Add placement record
+                    </h2>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
+                        Enter placement details and click <strong>Save to database</strong>. Uses <code>POST /api/placements</code>.
+                    </p>
+                    <PlacementEntryForm
+                        mode="add"
+                        defaultDepartment="uilah"
+                        variant="inline"
+                        onSubmit={handleSavePlacement}
+                    />
+                </div>
+            )}
+
             {/* Charts */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 20, marginBottom: 28 }}>
                 <div className="chart-container">
-                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Department-wise Placements</h3>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Placements by Institute</h3>
                     <div style={{ height: 240 }}>
                         <Bar data={deptChartData} options={{
                             responsive: true, maintainAspectRatio: false,
@@ -213,7 +264,7 @@ export default function PlacementPage() {
                         <thead>
                             <tr>
                                 <th>Student</th>
-                                <th>Department</th>
+                                <th>Institute</th>
                                 <th>Year</th>
                                 <th>Company</th>
                                 <th>Role</th>
@@ -221,6 +272,7 @@ export default function PlacementPage() {
                                 <th>CRC</th>
                                 <th>Contact</th>
                                 {showAlumni && <th>Value-Add Courses</th>}
+                                {isAssistant && <th>Manage</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -229,7 +281,7 @@ export default function PlacementPage() {
                                     <td style={{ fontWeight: 500 }}>{p.studentName}</td>
                                     <td>
                                         <span className="badge badge-lavender" style={{ fontSize: 11 }}>
-                                            {departments.find((d) => d.id === p.department)?.name.replace("Department of ", "") || p.department}
+                                            {departments.find((d) => d.id === p.department)?.shortName || p.department}
                                         </span>
                                     </td>
                                     <td>{p.year}</td>
@@ -268,12 +320,60 @@ export default function PlacementPage() {
                                             </div>
                                         </td>
                                     )}
+                                    {isAssistant && (
+                                        <td>
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    title="Edit"
+                                                    onClick={() => setEditPlacement(p)}
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    title="Delete"
+                                                    style={{ color: "var(--accent-rose)" }}
+                                                    onClick={() => void confirmDeletePlacement(p)}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {editPlacement && (
+                <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setEditPlacement(null)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: "90vh", overflowY: "auto" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <h3 className="heading-serif" style={{ fontSize: 20, margin: 0 }}>
+                                Edit placement
+                            </h3>
+                            <button type="button" className="btn btn-ghost" style={{ padding: 6 }} onClick={() => setEditPlacement(null)} aria-label="Close">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <PlacementEntryForm
+                            mode="edit"
+                            initial={editPlacement}
+                            defaultDepartment={editPlacement.department}
+                            variant="modal"
+                            onCancel={() => setEditPlacement(null)}
+                            onSubmit={async (rec) => {
+                                await handleSavePlacement(rec);
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

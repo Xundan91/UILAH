@@ -48,8 +48,8 @@ export default function ChatPanel() {
 
     const suggestions = [
         "What is the student-teacher ratio?",
-        "Which department has highest placements?",
-        "Average CGPA across departments?",
+        "Which institute has highest placements?",
+        "Average CGPA across institutes?",
         "Total computer systems available?",
     ];
 
