@@ -1,4 +1,7 @@
+import { ApiError, GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+
+const GEMINI_MODEL = 'gemini-3-flash-preview';
 
 // Build a comprehensive context summary from the dashboard data
 function buildDashboardContext(): string {
@@ -115,53 +118,53 @@ export async function POST(req: NextRequest) {
 
         const systemContext = buildDashboardContext();
 
-        // Build Gemini API payload using native system_instruction
-        const geminiMessages = messages.map((msg: any) => ({
+        const apiKey = process.env.GEMINI_API_KEY?.trim();
+        if (!apiKey) {
+            console.error('GEMINI_API_KEY is not set');
+            return NextResponse.json(
+                { reply: 'The AI assistant is not configured (missing GEMINI_API_KEY). Add your key to .env.local or .env.' },
+                { status: 500 }
+            );
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
+
+        const geminiMessages = messages.map((msg: { role: string; content: string }) => ({
             role: msg.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: msg.content }],
         }));
 
-        const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyCj0BQOTFtlAgBZ_pVS8l2IE_XSRdRQ43E';
+        const response = await ai.models.generateContent({
+            model: GEMINI_MODEL,
+            contents: geminiMessages,
+            config: {
+                systemInstruction: systemContext,
+                temperature: 0.7,
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 1024,
+                responseMimeType: 'text/plain',
+            },
+        });
 
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    system_instruction: {
-                        parts: { text: systemContext }
-                    },
-                    contents: geminiMessages,
-                    generationConfig: {
-                        temperature: 0.7,
-                        topP: 0.95,
-                        topK: 40,
-                        maxOutputTokens: 1024,
-                        responseMimeType: "text/plain"
-
-                    },
-                }),
-            }
-        );
-
-        if (!response.ok) {
-            const errorData = await response.text();
-            console.error('Gemini API error:', response.status, errorData);
-
-            if (response.status === 429) {
-                return NextResponse.json({ reply: "I'm receiving too many requests right now due to Gemini free tier rate limits (15 requests per minute). Please wait a few seconds and try again." });
-            }
-
-            return NextResponse.json({ reply: "I encountered an error connecting to the AI provider. Please try again later." });
-        }
-
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I couldn\'t generate a response.';
+        const text =
+            response.text?.trim() ||
+            "Sorry, I couldn't generate a response.";
 
         return NextResponse.json({ reply: text });
     } catch (error) {
         console.error('Chat API error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        if (error instanceof ApiError && error.status === 429) {
+            return NextResponse.json({
+                reply:
+                    "I'm receiving too many requests right now due to Gemini rate limits. Please wait a few seconds and try again.",
+            });
+        }
+        return NextResponse.json(
+            {
+                reply: 'I encountered an error connecting to the AI provider. Please try again later.',
+            },
+            { status: 500 }
+        );
     }
 }
