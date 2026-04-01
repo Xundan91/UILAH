@@ -135,7 +135,7 @@ export default function DashboardLayout({
                             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
                                 Dr. Santosh Kumar
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Senior Associate Director</div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Senior Executive Director</div>
                         </div>
                     </div>
                     <Link

@@ -77,9 +77,9 @@ Total Patents/IPR: ~25+
 Total Books Published: ~40+
 Notable Achievements: UGC Fellowships, Fulbright Fellows, ICSSR Grants, National Awards
 
-=== SENIOR ASSOCIATE DIRECTOR ===
+=== SENIOR EXECUTIVE DIRECTOR ===
 Name: Dr. Santosh Kumar
-Role: Senior Associate Director of UILAH
+Role: Senior Executive Director of UILAH
 The dashboard is designed for him to monitor all university metrics.
 
 Personal Assistant role exists for data entry and editing.

@@ -90,7 +90,7 @@ export default function LoginPage() {
                 fontSize: 15, fontWeight: 600,
                 color: selectedRole === "director" ? "var(--accent-terracotta)" : "var(--text-primary)",
               }}>
-                Senior Associate Director
+                Senior Executive Director
               </div>
               <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
                 View analytics & reports
@@ -167,7 +167,7 @@ export default function LoginPage() {
           textAlign: "center", fontSize: 12, color: "var(--text-muted)",
           marginTop: 24,
         }}>
-          Dr. Santosh Kumar — Senior Associate Director, UILAH
+          Dr. Santosh Kumar — Senior Executive Director, UILAH
           <br />
           <span style={{ opacity: 0.7 }}>Chandigarh University</span>
         </p>
